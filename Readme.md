@@ -6,7 +6,7 @@ Tools for preparing walnut images and manually annotating walnut centers for tra
 
 | Script | Purpose |
 |--------|---------|
-| `crop_image_quadrants.py` | Split one image into four equal quadrants (useful for tiling large photos). |
+| `crop_image_quadrants.py` | Split every image in a folder into four equal quadrants each (useful for tiling large photos). |
 | `walnut_annotator.py` | Interactive GUI to click walnut centers and save coordinates to text files. |
 
 **Typical workflow**
@@ -102,17 +102,18 @@ python walnut_annotator.py --help
 
 ### `crop_image_quadrants.py`
 
-Split an image into four equal tiles.
+Split every image in a directory into four equal tiles each (`.jpg`, `.jpeg`, `.png`, case-insensitive).
 
 ```bash
-python crop_image_quadrants.py /path/to/image.jpg -o /path/to/output
+python crop_image_quadrants.py /path/to/images -o /path/to/output
 ```
 
-| Option | Description |
-|--------|-------------|
-| `-o`, `--output` | Output directory (default: same folder as the input image) |
-| `--pad` | If width/height is odd, pad to even size before splitting |
-| `--pad-color R G B` | Padding color when using `--pad` (default: `0 0 0`) |
+| Argument / option | Description |
+|-------------------|-------------|
+| `input_dir` | Folder containing images to crop |
+| `-o`, `--output` | Output directory (default: same folder as `input_dir`) |
+
+Odd dimensions are padded automatically (one black pixel on the bottom and/or right) so each quadrant is equal size.
 
 **Output names:** `<stem>_q00`, `_q01`, `_q10`, `_q11` + original extension
 
@@ -126,7 +127,7 @@ python crop_image_quadrants.py /path/to/image.jpg -o /path/to/output
 **Example:**
 
 ```bash
-python crop_image_quadrants.py image/photo.jpg -o image/quadrants --pad
+python crop_image_quadrants.py image -o image/quadrants
 ```
 
 ### `walnut_annotator.py`
@@ -150,7 +151,7 @@ python walnut_annotator.py /path/to/images -o /path/to/annotations
 | Left click | Add walnut center |
 | Right click | Remove nearest annotation |
 | Ctrl + left click + drag | Pan |
-| Mouse wheel | Zoom in/out |
+| Mouse wheel or `+` / `-` | Zoom in/out (`+`/`-` work when the wheel does not, e.g. on macOS) |
 | `s` | Save current image |
 | `n` / `p` | Next / previous image (saves first) |
 | `r` | Reset zoom and pan |
@@ -177,4 +178,5 @@ Walnut_annotation/
 | PowerShell won’t activate venv | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`, or use `activate.bat` in cmd |
 | `import cv2` fails | Activate venv, run `pip install -r requirements.txt` |
 | Annotator window doesn’t appear | Use `opencv-python`, run locally with a display |
-| Crop fails on odd dimensions | Add `--pad` (and optional `--pad-color`) |
+| Zoom doesn’t work with mouse wheel | Click the window to focus it, or use `+` / `-` on the keyboard (common on macOS) |
+| Uneven split on odd-sized images | Padding is automatic (black pixel on bottom/right) |

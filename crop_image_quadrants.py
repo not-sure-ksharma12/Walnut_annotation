@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Crop an image into 4 equal parts (quadrants).
+Crop images in a directory into 4 equal parts (quadrants) each.
 
 Usage:
-  python crop_image_quadrants.py /path/to/image.jpg -o /path/to/output
+  python crop_image_quadrants.py /path/to/images -o /path/to/output
 
 Options:
-  -o, --output       Output directory (default: alongside the input image)
-  --pad              If image dimensions are odd, pad to even before splitting
-  --pad-color R G B  Padding color when using --pad (default: 0 0 0)
+  -o, --output       Output directory (default: same directory as the input images)
+
+Odd width or height is padded by one black pixel (bottom/right) before splitting.
 
 Outputs are named: <stem>_q00.<ext>, <stem>_q01.<ext>, <stem>_q10.<ext>, <stem>_q11.<ext>
 where q(row)(col):
@@ -16,30 +16,36 @@ where q(row)(col):
 """
 
 import argparse
-import os
 from pathlib import Path
 
 import cv2
 import numpy as np
 
+IMAGE_GLOBS = ("*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG")
+
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Crop an image into 4 equal quadrants")
-    parser.add_argument("image", help="Path to input image")
-    parser.add_argument("-o", "--output", help="Output directory (default: same as input image)")
-    parser.add_argument("--pad", action="store_true", help="Pad to even dimensions if needed")
+    parser = argparse.ArgumentParser(
+        description="Crop all images in a directory into 4 equal quadrants each"
+    )
+    parser.add_argument("input_dir", help="Directory containing images to crop")
     parser.add_argument(
-        "--pad-color",
-        nargs=3,
-        type=int,
-        metavar=("R", "G", "B"),
-        default=(0, 0, 0),
-        help="Padding color as R G B (default: 0 0 0)",
+        "-o",
+        "--output",
+        help="Output directory (default: same directory as the input images)",
     )
     return parser.parse_args()
 
 
-def ensure_even_dimensions(image: np.ndarray, pad: bool, pad_color: tuple[int, int, int]) -> np.ndarray:
+def collect_images(directory: Path) -> list[Path]:
+    found: dict[Path, None] = {}
+    for pattern in IMAGE_GLOBS:
+        for path in directory.glob(pattern):
+            found[path.resolve()] = None
+    return sorted(found.keys())
+
+
+def ensure_even_dimensions(image: np.ndarray) -> np.ndarray:
     height, width = image.shape[:2]
     need_pad_h = height % 2 != 0
     need_pad_w = width % 2 != 0
@@ -47,26 +53,18 @@ def ensure_even_dimensions(image: np.ndarray, pad: bool, pad_color: tuple[int, i
     if not (need_pad_h or need_pad_w):
         return image
 
-    if not pad:
-        raise ValueError(
-            f"Image dimensions must be even to split equally: got {width}x{height}. "
-            "Re-run with --pad to pad to even dimensions."
-        )
-
     pad_bottom = 1 if need_pad_h else 0
     pad_right = 1 if need_pad_w else 0
 
-    b, g, r = int(pad_color[2]), int(pad_color[1]), int(pad_color[0])
-    padded = cv2.copyMakeBorder(
+    return cv2.copyMakeBorder(
         image,
         top=0,
         bottom=pad_bottom,
         left=0,
         right=pad_right,
         borderType=cv2.BORDER_CONSTANT,
-        value=(b, g, r),
+        value=(0, 0, 0),
     )
-    return padded
 
 
 def split_into_quadrants(image: np.ndarray) -> list[np.ndarray]:
@@ -104,30 +102,42 @@ def save_quadrants(quadrants: list[np.ndarray], input_path: Path, output_dir: Pa
     return paths
 
 
-def main():
-    args = parse_args()
-
-    input_path = Path(args.image)
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input image not found: {input_path}")
-
-    output_dir = Path(args.output) if args.output else input_path.parent
-
+def crop_image(input_path: Path, output_dir: Path) -> list[Path]:
     image = cv2.imread(str(input_path), cv2.IMREAD_UNCHANGED)
     if image is None:
         raise ValueError(f"Could not read image: {input_path}")
 
-    image = ensure_even_dimensions(image, pad=args.pad, pad_color=tuple(args.pad_color))
-
+    image = ensure_even_dimensions(image)
     quads = split_into_quadrants(image)
-    out_paths = save_quadrants(quads, input_path, output_dir)
+    return save_quadrants(quads, input_path, output_dir)
 
-    print("Saved 4 tiles:")
-    for p in out_paths:
-        print(f"  - {p}")
+
+def main():
+    args = parse_args()
+
+    input_dir = Path(args.input_dir)
+    if not input_dir.is_dir():
+        raise NotADirectoryError(f"Input must be an existing directory: {input_dir}")
+
+    output_dir = Path(args.output) if args.output else input_dir
+
+    image_paths = collect_images(input_dir)
+    if not image_paths:
+        raise FileNotFoundError(
+            f"No images found in {input_dir} (supported: .jpg, .jpeg, .png)"
+        )
+
+    total_tiles = 0
+
+    for input_path in image_paths:
+        out_paths = crop_image(input_path, output_dir)
+        total_tiles += len(out_paths)
+        print(f"{input_path.name} -> 4 tiles:")
+        for p in out_paths:
+            print(f"  - {p}")
+
+    print(f"\nProcessed {len(image_paths)} image(s), wrote {total_tiles} tile(s) to {output_dir}")
 
 
 if __name__ == "__main__":
     main()
-
-

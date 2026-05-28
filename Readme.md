@@ -19,8 +19,6 @@ Verify that all dependencies are installed correctly:
 python -c "import cv2, numpy; print('opencv', cv2.__version__, 'numpy', numpy.__version__)"
 ```
 
-## Usage
-
 ### Crop Image Quadrants
 ```bash
 python crop_image_quadrants.py --help

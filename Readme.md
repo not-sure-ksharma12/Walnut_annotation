@@ -5,6 +5,13 @@
 ### Create Virtual Environment
 ```bash
 python3 -m venv .venv
+```
+### Windows
+```
+source .venv\Scripts\Activate.ps1
+```
+### MacOS
+```
 source .venv/bin/activate
 ```
 

@@ -14,7 +14,7 @@ Features:
 
 Usage:
 ```bash
-python walnut_annotator.py --input_folder /path/to/images --output_folder /path/to/annotations
+python walnut_annotator.py /path/to/input_images --output_folder /path/to/annotations
 ```
 """
 
